@@ -44,6 +44,7 @@ define(function(require, exports, module) {
     var Surface = require("famous/core/Surface");
     var MouseSync = require("famous/inputs/MouseSync");
     var Modifier = require("famous/core/Modifier");
+    var Transform = require("famous/core/Transform");
 
     var Transitionable = require("famous/transitions/Transitionable");
 
@@ -52,6 +53,8 @@ define(function(require, exports, module) {
     var mainContext = Engine.createContext();
 
     var size = new Transitionable([0, 0]);
+
+    var anchor = new Transitionable([0, 0]);
 
     var grid = new GridLayout({
         dimensions: [4, 2]
@@ -85,17 +88,44 @@ define(function(require, exports, module) {
 
     var selectBox = new Surface({
         classes: ["grey-bg"],
-        properties: {
-            opacity: "0.3"
-        }
-    })
+    });
 
     var selectBoxSize = new Modifier({
         size: function(){
             var currentSize = size.get();
             return [currentSize[0], currentSize[1]];
         }
+    });
+
+    var selectBoxAnchor = new Modifier({
+        transform: function(){
+            var currentPosition = anchor.get();
+                return Transform.translate(currentPosition[0], currentPosition[1], 0);
+        }
+    });
+
+    var selectBoxOpacity = new Modifier({
+        opacity: 0.2
+    });
+
+    var mouseSync = new MouseSync();
+
+    Engine.pipe(mouseSync);
+
+    mouseSync.on("start", function (data){
+        anchor.set([data.clientX, data.clientY]);
+        console.log(anchor.get());
+    });
+
+    mouseSync.on("update", function (data){
+        size.set(data.position);
+    });
+
+    mouseSync.on("end", function (data){
+        anchor.set([0,0]);
+        size.set([0,0]);
     })
 
     mainContext.add(grid);
+    mainContext.add(selectBoxOpacity).add(selectBoxAnchor).add(selectBoxSize).add(selectBox);
 });
