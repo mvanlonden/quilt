@@ -93,16 +93,34 @@ define(function(require, exports, module) {
     var selectBoxSize = new Modifier({
         size: function(){
             var currentSize = size.get();
-            return [currentSize[0], currentSize[1]];
+            if((currentSize[0] < 0 && currentSize[1] > 0) || (currentSize[0] > 0 && currentSize[1] < 0)){
+                return [Math.abs(currentSize[1]), Math.abs(currentSize[0])];
+            }
+            return [Math.abs(currentSize[0]), Math.abs(currentSize[1])];
         }
     });
 
     var selectBoxAnchor = new Modifier({
         transform: function(){
             var currentPosition = anchor.get();
-                return Transform.translate(currentPosition[0], currentPosition[1], 0);
+            return Transform.translate(currentPosition[0], currentPosition[1], 0);
         }
     });
+
+    var selectBoxRotation = new Modifier({
+        transform: function(){
+            var currentSize = size.get();
+            if(currentSize[0] < 0 && currentSize[1] < 0){
+                return Transform.rotateZ(Math.PI);
+            } 
+            if(currentSize[0] < 0 && currentSize[1] > 0){
+                return Transform.rotateZ(Math.PI / 2);
+            }
+            if(currentSize[0] > 0 && currentSize[1] < 0){
+                return Transform.rotateZ(Math.PI * 3 / 2);
+            }
+        }
+    })
 
     var selectBoxOpacity = new Modifier({
         opacity: 0.2
@@ -114,7 +132,6 @@ define(function(require, exports, module) {
 
     mouseSync.on("start", function (data){
         anchor.set([data.clientX, data.clientY]);
-        console.log(anchor.get());
     });
 
     mouseSync.on("update", function (data){
@@ -127,5 +144,5 @@ define(function(require, exports, module) {
     })
 
     mainContext.add(grid);
-    mainContext.add(selectBoxOpacity).add(selectBoxAnchor).add(selectBoxSize).add(selectBox);
+    mainContext.add(selectBoxOpacity).add(selectBoxAnchor).add(selectBoxSize).add(selectBoxRotation).add(selectBox);
 });
