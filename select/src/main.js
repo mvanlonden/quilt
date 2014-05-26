@@ -45,6 +45,8 @@ define(function(require, exports, module) {
     var MouseSync = require("famous/inputs/MouseSync");
     var Modifier = require("famous/core/Modifier");
     var Transform = require("famous/core/Transform");
+    var ContainerSurface = require("famous/surfaces/ContainerSurface");
+    var StateModifier = require('famous/modifiers/StateModifier');
 
     var Transitionable = require("famous/transitions/Transitionable");
 
@@ -52,29 +54,12 @@ define(function(require, exports, module) {
 
     var mainContext = Engine.createContext();
 
+    var gridContext = Engine.createContext();
+
     var size = new Transitionable([0, 0]);
 
     var anchor = new Transitionable([0, 0]);
 
-    var grid = new GridLayout({
-        dimensions: [4, 2]
-    });
-
-    var surfaces = [];
-    grid.sequenceFrom(surfaces);
-
-    for(var i = 0; i < 8; i++) {
-        surfaces.push(new Surface({
-        content: "panel " + (i + 1),
-        size: [undefined, undefined],
-        properties: {
-            backgroundColor: "hsl(" + (i * 360 / 8) + ", 100%, 50%)",
-            color: "#404040",
-            lineHeight: '200px',
-            textAlign: 'center'
-        }
-        }));
-    }
 
     var surface = new Surface({
         size: [200, 200],
@@ -86,9 +71,7 @@ define(function(require, exports, module) {
         }
     });
 
-    var selectBox = new Surface({
-        classes: ["grey-bg"],
-    });
+    
 
     var selectBoxSize = new Modifier({
         size: function(){
@@ -141,7 +124,51 @@ define(function(require, exports, module) {
     mouseSync.on("end", function (data){
         anchor.set([0,0]);
         size.set([0,0]);
-    })
+    });
+
+    var gridColumns = 5;
+
+    var gridRows = 5;
+
+    var grid = new ContainerSurface({
+        size: [undefined , undefined],
+        classes: ["grey-bg"]
+    });
+
+    for(var j = 0; j < gridRows; j++){
+        for(var i = 0; i < gridColumns; i++) {
+            var surface = new Surface({
+                size: [undefined, undefined],
+                properties: {
+                    backgroundColor: "hsl(" + ((i + j) * 360 / (gridColumns * gridRows)) + ", 100%, 50%)",
+                    color: "#404040",
+                    textAlign: 'center'
+                }
+            });
+            var cellOpacity = new Modifier({
+                opacity: function(){
+                    var currentSelected = selected.get();
+                    if (currentSelected) {
+                        return 1;
+                    }
+                    return 0.5;
+                }
+            });
+            var cellSize = new Modifier({
+                size: function(){
+                    return [mainContext.getSize()[0] / gridColumns, mainContext.getSize()[1] / gridRows];          
+                }
+            });
+            var cellAlignment = new StateModifier({
+                align: [i, j]
+            });
+            grid.add(cellSize).add(cellOpacity).add(cellAlignment).add(surface);
+        }
+    }
+
+    var selectBox = new Surface({
+        classes: ["grey-bg"],
+    });
 
     mainContext.add(grid);
     mainContext.add(selectBoxOpacity).add(selectBoxAnchor).add(selectBoxSize).add(selectBoxRotation).add(selectBox);
