@@ -137,6 +137,10 @@ define(function(require, exports, module) {
 
     for(var j = 0; j < gridRows; j++){
         for(var i = 0; i < gridColumns; i++) {
+            var width = mainContext.getSize()[0];
+            var height = mainContext.getSize()[1];
+            
+
             var surface = new Surface({
                 size: [undefined, undefined],
                 properties: {
@@ -145,20 +149,37 @@ define(function(require, exports, module) {
                     textAlign: 'center'
                 }
             });
-            var cellOpacity = new Modifier({
-                opacity: function(){
-                    var currentSelected = selected.get();
-                    if (currentSelected) {
-                        return 1;
-                    }
-                    return 0.5;
-                }
-            });
+
             var cellSize = new Modifier({
                 size: function(){
                     return [mainContext.getSize()[0] / gridColumns, mainContext.getSize()[1] / gridRows];          
                 }
             });
+
+            
+
+            var cellOpacity = new Modifier({
+                opacity: function(){
+                    var selectBoxOrigin = anchor.get();
+                    var selectBoxSize = size.get();
+                    var selectLeftWall = selectBoxOrigin[0];
+                    var selectRightWall = selectBoxOrigin[0] + selectBoxSize[0];
+                    var selectTopWall = selectBoxOrigin[1];
+                    var selectBottomWall = selectBoxOrigin[1] + selectBoxSize[1];
+                    var width = cellSize.getSize()[0];
+                    var height = cellSize.getSize()[1];
+                    var leftWall = i * width;
+                    var rightWall = (i + 1) * width;
+                    var topWall = j * height;
+                    var bottomWall = (j + 1) * height;
+                    
+                    if (rightWall > selectLeftWall) {
+                        return 1;
+                    }
+                    return 0.5;
+                }
+            });
+
             var cellAlignment = new StateModifier({
                 align: [i, j]
             });
