@@ -103,7 +103,7 @@ define(function(require, exports, module) {
                 return Transform.rotateZ(Math.PI * 3 / 2);
             }
         }
-    })
+    });
 
     var selectBoxOpacity = new Modifier({
         opacity: 0.2
