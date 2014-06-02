@@ -204,7 +204,7 @@ define(function(require, exports, module) {
     for(var i = 0; i < cells; i++) {
         surfaces.push(new Surface({
             size: [undefined, undefined],
-            classes: ["cell"],
+            classes: ["cell", i],
             properties: {
                 backgroundColor: "hsl(" + (i * 360 / cells) + ", 100%, 50%)",
                 color: "black",
@@ -321,7 +321,20 @@ define(function(require, exports, module) {
     });
 
     var patchModifier = new Modifier({
-        size: [200, 200],
+        size: function(){
+            var cells = document.getElementsByClassName('cell');
+            var selected = [];
+            for(var i = 0; i < cells.length; i++) {
+                var cell = cells[i];
+                if (cell.style.opacity == 1) {
+                    cellClassName = cell.className;
+                    var id = cellClassName.split(" ")[2];
+                    console.log(id);
+                    selected.push(id);
+                }
+            }
+            return [200, 200];
+        },
         origin: [1, 1]
     });
 
@@ -333,7 +346,7 @@ define(function(require, exports, module) {
 
     mainContext.add(editButtonModifier).add(editButton);
     mainContext.add(selectBoxOpacity).add(selectBoxAnchor).add(selectBoxSize).add(selectBoxRotation).add(selectBox);
-    var canvas = mainContext.add(gridModifier).add(initScaleModifier).add(scaleModifier).add(panModifier)
+    var canvas = mainContext.add(gridModifier).add(initScaleModifier).add(scaleModifier).add(panModifier);
     canvas.add(grid);
     canvas.add(patchModifier).add(testPatch);
 });
