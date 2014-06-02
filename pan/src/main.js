@@ -87,8 +87,6 @@ define(function(require, exports, module) {
         ]);
     });
 
-    //var view 
-
     var draggable = new Draggable();
 
     draggable.subscribe(surface);

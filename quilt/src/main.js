@@ -143,12 +143,12 @@ define(function(require, exports, module) {
         }
     });
 
-    var panModifier = new StateModifier({
+    var panModifier = new Modifier({
         transform: function(){
             var currentPosition = position.get();
             return Transform.translate(currentPosition[0], currentPosition[1]);
         }
-    })
+    });
 
     
 
@@ -180,17 +180,16 @@ define(function(require, exports, module) {
 
     //Panning listeners
 
-    Engine.pipe(mouseSync);
+    canvas.pipe(mouseSync);
 
     mouseSync.on("update", function(data){
         var currentPosition = position.get();
+        console.log(currentPosition);
         position.set([
             currentPosition[0] + data.delta[0],
             currentPosition[1] + data.delta[1]
         ]);
     });
-
-    //var view 
 
     var draggable = new Draggable();
 
@@ -199,6 +198,6 @@ define(function(require, exports, module) {
     canvas.add(patchPositionLeft).add(patchLeft);
     canvas.add(patchPositionTopRight).add(patchTopRight);
     canvas.add(patchPositionBottomRight).add(patchBottomRight);
-    mainContext.add(centerModifier).add(initScaleModifier).add(scaleModifier).add(draggable).add(canvas);
+    mainContext.add(centerModifier).add(initScaleModifier).add(scaleModifier).add(panModifier).add(canvas);
     mainContext.add(backgroundSurface);
 });

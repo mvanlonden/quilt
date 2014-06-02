@@ -34,17 +34,80 @@
  */
 
 define(function(require, exports, module) {
+    //core
     var Engine     = require("famous/core/Engine");
     var Surface    = require("famous/core/Surface");
     var Modifier   = require("famous/core/Modifier");
-    var GridLayout = require("famous/views/GridLayout");
-    var Transitionable = require("famous/transitions/Transitionable");
-    var MouseSync = require("famous/inputs/MouseSync");
     var Transform = require("famous/core/Transform");
 
+    var GridLayout = require("famous/views/GridLayout");
+    var Transitionable = require("famous/transitions/Transitionable");
+
+    //modifiers
+    var Draggable = require('famous/modifiers/Draggable');
+    var StateModifier = require('famous/modifiers/StateModifier');
+
+    //inputs
+    var ScrollSync = require("famous/inputs/ScrollSync");
+    var MouseSync = require("famous/inputs/MouseSync");
+
+    //transitions
+    var WallTransition = require('famous/transitions/WallTransition');
+    Transitionable.registerMethod('wall', WallTransition);
+
+    /**
+    *
+    * Toggle edit mode
+    *
+    **/
+
+    var editing = false;
+
+    var editButtonModifier = new Modifier({
+        origin: [1, 0],
+        opacity: function() {
+            if (editing) {
+                return 0.5;
+            }
+            return 1;
+        },
+        size: [50, 40]
+    });
+
+    var editButton = new Surface({
+        content: 'Edit',
+        size: [undefined, undefined],
+        properties: {
+            background: 'black',
+            color: 'white',
+            textAlign: 'center',
+            lineHeight: '40px'
+        }
+    });
+
+    var editClickSync = new MouseSync();
+
+    editButton.pipe(editClickSync);
+
+    editClickSync.on('start', function(){
+        editing = !editing;
+        console.log(editing);
+        if (editing){
+            Engine.unpipe(panMouseSync);
+            Engine.pipe(selectMouseSync);
+        } else {
+            Engine.pipe(panMouseSync);
+            Engine.unpipe(selectMouseSync);
+        }
+    });
+
+    /**
+    *
+    * Grid and Select
+    *
+    **/
 
     var size = new Transitionable([0, 0]);
-
     var anchor = new Transitionable([0, 0]);
 
     var selectBox = new Surface({
@@ -87,15 +150,13 @@ define(function(require, exports, module) {
         opacity: 0.2
     });
 
-    var mouseSync = new MouseSync();
+    var selectMouseSync = new MouseSync();
 
-    Engine.pipe(mouseSync);
-
-    mouseSync.on("start", function (data){
+    selectMouseSync.on("start", function (data){
         anchor.set([data.clientX, data.clientY]);
     });
 
-    mouseSync.on("update", function (data){
+    selectMouseSync.on("update", function (data){
         size.set(data.position);
         var cells = document.getElementsByClassName('cell');
         var selectBox = document.getElementsByClassName('selectBox')[0];
@@ -115,7 +176,7 @@ define(function(require, exports, module) {
         }
     });
 
-    mouseSync.on("end", function (data){
+    selectMouseSync.on("end", function (data){
         anchor.set([0,0]);
         size.set([0,0]);
         var cells = document.getElementsByClassName('cell');
@@ -129,10 +190,12 @@ define(function(require, exports, module) {
 
     var mainContext = Engine.createContext();
 
-    var cells = 16 * 16;
+    var rows = 10;
+    var columns =10;
+    var cells = rows * columns;
 
     var grid = new GridLayout({
-        dimensions: [16, 16]
+        dimensions: [rows, columns]
     });
 
     var surfaces = [];
@@ -151,6 +214,126 @@ define(function(require, exports, module) {
         }));
     }
 
+    var gridSize = new Transitionable([400, 400]);
+
+    var gridModifier = new Modifier({
+        size: function(){
+            var currentGridSize = gridSize.get();
+            return currentGridSize;
+        }, 
+        origin: [.5, .5], 
+        opacity: 0.5
+    });
+
+    /**
+    *
+    * Pan and Scale
+    *
+    **/
+
+    var maxScale = 200;
+    var minScale = 0;
+    var displaceThreshold = 50;
+    var maxDisplace = maxScale + displaceThreshold;
+    var minDisplace = minScale - displaceThreshold;
+    var perspective = maxDisplace + 120;
+
+    var scale = new Transitionable(0);
+    var position = new Transitionable([0, 0]);
+
+    var scrollSync = new ScrollSync();
+    var panMouseSync = new MouseSync();
+
+    mainContext.setPerspective(perspective);
+
+    //Dynamic positioning modifiers
+
+    var scaleModifier = new Modifier({
+        transform : function(){
+            var currentScale = scale.get();
+            return Transform.translate(0, 0, currentScale);
+        }
+    });
+
+    var panModifier = new Modifier({
+        transform: function(){
+            var currentPosition = position.get();
+            return Transform.translate(currentPosition[0], currentPosition[1]);
+        }
+    });
+
+
+    //Static positioning modifiers
+
+    var initScaleModifier = new Modifier({
+        transform: Transform.translate(0, 0, displaceThreshold  + 50)
+    });
+
+    //Scaling listeners
+
+    Engine.pipe(scrollSync);
+
+    scrollSync.on("update", function(data) {
+        var currentScale = scale.get();
+        var delta = data.delta[1] /100;
+
+        if (currentScale > maxDisplace){
+            scale.set( currentScale );
+        } else if (currentScale < minDisplace){
+            scale.set( currentScale );
+        } else {
+            scale.set( currentScale + delta );
+        }
+    });
+
+    scrollSync.on("end", function() {
+        if(scale.get() < minScale){
+            scale.set(minScale, {method : 'wall',   dampingRatio : 0.5, period : 500});
+        }
+        if(scale.get() > maxScale){
+            scale.set(maxScale, {method : 'wall',   dampingRatio : 0.5, period : 500});
+        }
+    });
+
+    //Panning listeners
+
+    Engine.pipe(panMouseSync);
+
+    panMouseSync.on("update", function(data){
+        var currentPosition = position.get();
+        position.set([
+            currentPosition[0] + data.delta[0],
+            currentPosition[1] + data.delta[1]
+        ]);
+    });
+
+    /**
+    *
+    * Patches
+    *
+    **/
+
+    var testPatch = new Surface({
+        size: [undefined, undefined],
+        properties: {
+            background: 'blue'
+        }
+    });
+
+    var patchModifier = new Modifier({
+        size: [200, 200],
+        origin: [1, 1]
+    });
+
+    /**
+    *
+    * DOM addition
+    *
+    **/
+
+    mainContext.add(editButtonModifier).add(editButton);
     mainContext.add(selectBoxOpacity).add(selectBoxAnchor).add(selectBoxSize).add(selectBoxRotation).add(selectBox);
-    mainContext.add(new Modifier({size: [400, 400], origin: [.5, .5], opacity: 0.5})).add(grid);
+    var canvas = mainContext.add(gridModifier).add(initScaleModifier).add(scaleModifier).add(panModifier)
+    canvas.add(grid);
+    canvas.add(patchModifier).add(testPatch);
 });
