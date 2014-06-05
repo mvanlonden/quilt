@@ -337,12 +337,20 @@ define(function(require, exports, module) {
             var cellWidth = currentGridSize[0] / columns;
             var cellHeight = currentGridSize[1] / rows;
 
-            var width = (maxColumn + 1 - minColumn) * (cellWidth);
-            var height = (maxRow + 1 - minRow) * (cellHeight);
+            var width = (maxColumn + 1 - minColumn) * cellWidth;
+            var height = (maxRow + 1 - minRow) * cellHeight;
 
             return [width, height];
         },
-        origin: [1, 1]
+        align: function(){
+            var minRow = minMaxRow.get()[0];
+            var minColumn = minMaxColumn.get()[0];
+
+            var rowAlign = (minRow - 1) / rows;
+            var columnAlign = (minColumn - 1) /columns;
+
+            return [columnAlign, rowAlign];
+        }
     });
 
     function findMinMaxRow(){
