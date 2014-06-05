@@ -91,7 +91,6 @@ define(function(require, exports, module) {
 
     editClickSync.on('start', function(){
         editing = !editing;
-        console.log(editing);
         if (editing){
             Engine.unpipe(panMouseSync);
             Engine.pipe(selectMouseSync);
@@ -328,9 +327,20 @@ define(function(require, exports, module) {
 
     var patchModifier = new Modifier({
         size: function(){
-            console.log(minMaxRow.get());
-            minMaxColumn.get();
-            return [100, 100];
+            var minRow = minMaxRow.get()[0];
+            var maxRow = minMaxRow.get()[1];
+            var minColumn = minMaxColumn.get()[0];
+            var maxColumn = minMaxColumn.get()[1];
+
+
+            var currentGridSize = gridSize.get();
+            var cellWidth = currentGridSize[0] / columns;
+            var cellHeight = currentGridSize[1] / rows;
+
+            var width = (maxColumn + 1 - minColumn) * (cellWidth);
+            var height = (maxRow + 1 - minRow) * (cellHeight);
+
+            return [width, height];
         },
         origin: [1, 1]
     });
@@ -373,26 +383,6 @@ define(function(require, exports, module) {
             }
         }
         return [minColumn, maxColumn];
-    }
-
-    function findRowColumn() {
-        var cells = document.getElementsByClassName('cell');
-        var max = null;
-        var min = null;
-        for(var i = 0; i < cells.length; i++) {
-            var cell = cells[i];
-            if (cell.style.opacity == 1) {
-                cellClassName = cell.className;
-                var id = parseInt(cellClassName.split(" ")[2]);
-                if (max == null || id > max){
-                    max = id;
-                }
-                if (min == null || id < min){
-                    min = id;
-                }
-            }
-        }
-        return [min, max];
     }
 
     /**
