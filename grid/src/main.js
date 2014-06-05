@@ -158,6 +158,8 @@ define(function(require, exports, module) {
 
     selectMouseSync.on("update", function (data){
         size.set(data.position);
+        minMaxRow.set(findMinMaxRow());
+        minMaxColumn.set(findMinMaxColumn());
         var cells = document.getElementsByClassName('cell');
         var selectBox = document.getElementsByClassName('selectBox')[0];
         var selectBoxRect = selectBox.getBoundingClientRect();
@@ -192,7 +194,6 @@ define(function(require, exports, module) {
 
     var rows = 10;
     var columns =10;
-    var cells = rows * columns;
 
     var grid = new GridLayout({
         dimensions: [rows, columns]
@@ -201,17 +202,19 @@ define(function(require, exports, module) {
     var surfaces = [];
     grid.sequenceFrom(surfaces);
 
-    for(var i = 0; i < cells; i++) {
-        surfaces.push(new Surface({
-            size: [undefined, undefined],
-            classes: ["cell", i],
-            properties: {
-                backgroundColor: "hsl(" + (i * 360 / cells) + ", 100%, 50%)",
-                color: "black",
-                lineHeight: '100px',
-                textAlign: 'center'
-            }
-        }));
+    for(var j = 0; j < rows; j++){
+        for(var i = 0; i < columns; i++) {
+            surfaces.push(new Surface({
+                size: [undefined, undefined],
+                classes: ["cell", j + 1, i + 1],
+                properties: {
+                    backgroundColor: "hsl(" + ((i * j) * 360 / (rows * columns)) + ", 100%, 50%)",
+                    color: "black",
+                    lineHeight: '100px',
+                    textAlign: 'center'
+                }
+            }));
+        }
     }
 
     var gridSize = new Transitionable([400, 400]);
@@ -313,6 +316,9 @@ define(function(require, exports, module) {
     *
     **/
 
+    var minMaxRow = new Transitionable([0, 0]);
+    var minMaxColumn = new Transitionable([0, 0]);
+
     var testPatch = new Surface({
         size: [undefined, undefined],
         properties: {
@@ -322,21 +328,72 @@ define(function(require, exports, module) {
 
     var patchModifier = new Modifier({
         size: function(){
-            var cells = document.getElementsByClassName('cell');
-            var selected = [];
-            for(var i = 0; i < cells.length; i++) {
-                var cell = cells[i];
-                if (cell.style.opacity == 1) {
-                    cellClassName = cell.className;
-                    var id = cellClassName.split(" ")[2];
-                    console.log(id);
-                    selected.push(id);
-                }
-            }
-            return [200, 200];
+            console.log(minMaxRow.get());
+            minMaxColumn.get();
+            return [100, 100];
         },
         origin: [1, 1]
     });
+
+    function findMinMaxRow(){
+        var cells = document.getElementsByClassName('cell');
+        var minRow = null;
+        var maxRow = null;
+        for(var i = 0; i < cells.length; i++){
+            var cell = cells[i];
+            if (cell.style.opacity == 1){
+                cellClassName = cell.className;
+                var id = parseInt(cellClassName.split(" ")[2]);
+                if(maxRow == null || id > maxRow){
+                    maxRow = id;
+                } 
+                if (minRow == null || id < minRow){
+                    minRow = id;
+                }
+            }
+        }
+        return [minRow, maxRow];
+    }
+
+    function findMinMaxColumn(){
+        var cells = document.getElementsByClassName('cell');
+        var minColumn = null;
+        var maxColumn = null;
+        for(var i = 0; i < cells.length; i++){
+            var cell = cells[i];
+            if (cell.style.opacity == 1){
+                cellClassName = cell.className;
+                var id = parseInt(cellClassName.split(" ")[3]);
+                if(maxColumn == null || id > maxColumn){
+                    maxColumn = id;
+                } 
+                if (minColumn == null || id < minColumn){
+                    minColumn = id;
+                }
+            }
+        }
+        return [minColumn, maxColumn];
+    }
+
+    function findRowColumn() {
+        var cells = document.getElementsByClassName('cell');
+        var max = null;
+        var min = null;
+        for(var i = 0; i < cells.length; i++) {
+            var cell = cells[i];
+            if (cell.style.opacity == 1) {
+                cellClassName = cell.className;
+                var id = parseInt(cellClassName.split(" ")[2]);
+                if (max == null || id > max){
+                    max = id;
+                }
+                if (min == null || id < min){
+                    min = id;
+                }
+            }
+        }
+        return [min, max];
+    }
 
     /**
     *
@@ -349,4 +406,5 @@ define(function(require, exports, module) {
     var canvas = mainContext.add(gridModifier).add(initScaleModifier).add(scaleModifier).add(panModifier);
     canvas.add(grid);
     canvas.add(patchModifier).add(testPatch);
+    
 });
