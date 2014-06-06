@@ -151,14 +151,20 @@ define(function(require, exports, module) {
 
     var selectMouseSync = new MouseSync();
 
+    var patches = 0;
+    var currentPatch;
+
     selectMouseSync.on("start", function (data){
         anchor.set([data.clientX, data.clientY]);
+        currentPatch = new Patch(patches);
+        console.log("start " + currentPatch);
+        patches++;
     });
 
     selectMouseSync.on("update", function (data){
         size.set(data.position);
-        minMaxRow.set(findMinMaxRow());
-        minMaxColumn.set(findMinMaxColumn());
+        console.log(currentPatch);
+        currentPatch.setModifier(findMinMaxRow(), findMinMaxColumn());
         var cells = document.getElementsByClassName('cell');
         var selectBox = document.getElementsByClassName('selectBox')[0];
         var selectBoxRect = selectBox.getBoundingClientRect();
@@ -177,6 +183,8 @@ define(function(require, exports, module) {
         }
     });
 
+    
+
     selectMouseSync.on("end", function (data){
         anchor.set([0,0]);
         size.set([0,0]);
@@ -185,14 +193,16 @@ define(function(require, exports, module) {
             var cell = cells[i];
             cell.style.opacity = 0.5;
         }
+        console.log(currentPatch);
+        currentPatch.addToGrid();
     });
 
 
 
     var mainContext = Engine.createContext();
 
-    var rows = 10;
-    var columns =10;
+    var rows = 20;
+    var columns =20;
 
     var grid = new GridLayout({
         dimensions: [rows, columns]
@@ -315,43 +325,46 @@ define(function(require, exports, module) {
     *
     **/
 
-    var minMaxRow = new Transitionable([0, 0]);
-    var minMaxColumn = new Transitionable([0, 0]);
+    function Patch(id) {
+        this.surface = new Surface({
+            size: [undefined, undefined],
+            properties: {
+                background: 'blue'
+            }
+        });
+        this.id = id;
+        this.modifier;
+    };
 
-    var testPatch = new Surface({
-        size: [undefined, undefined],
-        properties: {
-            background: 'blue'
-        }
-    });
+    Patch.prototype.addToGrid = function() {
+        canvas.add(this.modifier).add(this.surface);
+    }
 
-    var patchModifier = new Modifier({
-        size: function(){
-            var minRow = minMaxRow.get()[0];
-            var maxRow = minMaxRow.get()[1];
-            var minColumn = minMaxColumn.get()[0];
-            var maxColumn = minMaxColumn.get()[1];
-
-
-            var currentGridSize = gridSize.get();
-            var cellWidth = currentGridSize[0] / columns;
-            var cellHeight = currentGridSize[1] / rows;
-
-            var width = (maxColumn + 1 - minColumn) * cellWidth;
-            var height = (maxRow + 1 - minRow) * cellHeight;
-
-            return [width, height];
-        },
-        align: function(){
-            var minRow = minMaxRow.get()[0];
-            var minColumn = minMaxColumn.get()[0];
-
-            var rowAlign = (minRow - 1) / rows;
-            var columnAlign = (minColumn - 1) /columns;
-
-            return [columnAlign, rowAlign];
-        }
-    });
+    Patch.prototype.setModifier = function(minMaxRow, minMaxColumn){
+        var minRow = minMaxRow[0];
+        var maxRow = minMaxRow[1];
+        var minColumn = minMaxColumn[0];
+        var maxColumn = minMaxColumn[1];
+        this.modifier = new Modifier({
+            size: function(){
+                var currentGridSize = gridSize.get();
+                var cellWidth = currentGridSize[0] / columns;
+                var cellHeight = currentGridSize[1] / rows;
+    
+                var width = (maxColumn + 1 - minColumn) * cellWidth;
+                var height = (maxRow + 1 - minRow) * cellHeight;
+    
+                return [width, height];
+            },
+            align: function(){
+                console.log(minRow);
+                var rowAlign = (minRow - 1) / rows;
+                var columnAlign = (minColumn - 1) /columns;
+    
+                return [columnAlign, rowAlign];
+            }
+        });
+    }
 
     function findMinMaxRow(){
         var cells = document.getElementsByClassName('cell');
@@ -403,6 +416,6 @@ define(function(require, exports, module) {
     mainContext.add(selectBoxOpacity).add(selectBoxAnchor).add(selectBoxSize).add(selectBoxRotation).add(selectBox);
     var canvas = mainContext.add(gridModifier).add(initScaleModifier).add(scaleModifier).add(panModifier);
     canvas.add(grid);
-    canvas.add(patchModifier).add(testPatch);
+    
     
 });
