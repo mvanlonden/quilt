@@ -61,6 +61,13 @@ define(function(require, exports, module) {
     *
     **/
 
+    var images = ['http://m1.behance.net/rendition/modules/117187517/hd/0db08a292bd13b7899317a2d74ce63d0.png',
+    'http://m1.behance.net/rendition/modules/117187519/hd/fda8e9dfccdb318db8929df4dbeeb6db.jpg',
+    'http://m1.behance.net/rendition/modules/117187523/hd/27374b88bb711f63adfa74c96a31931f.jpg',
+    'http://m1.behance.net/rendition/modules/117187529/hd/7d0346d2d0df32462d256c2468938481.jpg',
+    'http://m1.behance.net/rendition/modules/117187511/hd/30399755dc75494b79eca5b67c40992d.jpg',
+    'http://m1.behance.net/rendition/modules/117187507/hd/a6188394c1c8e3760e9ca11591cd8601.jpg'];
+
     var editing = false;
 
     var editButtonModifier = new Modifier({
@@ -110,7 +117,7 @@ define(function(require, exports, module) {
     var anchor = new Transitionable([0, 0]);
 
     var selectBox = new Surface({
-        classes: ["grey-bg", "selectBox"],
+        classes: ["grey-bg", "selectBox"]
     });
 
     var selectBoxSize = new Modifier({
@@ -142,6 +149,7 @@ define(function(require, exports, module) {
             if(currentSize[0] > 0 && currentSize[1] < 0){
                 return Transform.rotateZ(Math.PI * 3 / 2);
             }
+            return 0;
         }
     });
 
@@ -152,19 +160,16 @@ define(function(require, exports, module) {
     var selectMouseSync = new MouseSync();
 
     var patches = 0;
-    var currentPatch;
+    var currentPatch = new Patch(patches);
 
     selectMouseSync.on("start", function (data){
         anchor.set([data.clientX, data.clientY]);
         currentPatch = new Patch(patches);
-        console.log("start " + currentPatch);
-        patches++;
     });
 
     selectMouseSync.on("update", function (data){
         size.set(data.position);
-        console.log(currentPatch);
-        currentPatch.setModifier(findMinMaxRow(), findMinMaxColumn());
+        currentPatch.setDimensions(findMinMaxRow(), findMinMaxColumn());
         var cells = document.getElementsByClassName('cell');
         var selectBox = document.getElementsByClassName('selectBox')[0];
         var selectBoxRect = selectBox.getBoundingClientRect();
@@ -185,7 +190,7 @@ define(function(require, exports, module) {
 
     
 
-    selectMouseSync.on("end", function (data){
+    selectMouseSync.on("end", function (){
         anchor.set([0,0]);
         size.set([0,0]);
         var cells = document.getElementsByClassName('cell');
@@ -193,16 +198,17 @@ define(function(require, exports, module) {
             var cell = cells[i];
             cell.style.opacity = 0.5;
         }
-        console.log(currentPatch);
-        currentPatch.addToGrid();
+        if(currentPatch.valid()){
+            currentPatch.addModifier();
+            currentPatch.addToGrid();
+            currentPatch.addImage(images[patches]);
+        }
     });
-
-
 
     var mainContext = Engine.createContext();
 
     var rows = 20;
-    var columns =20;
+    var columns = 20;
 
     var grid = new GridLayout({
         dimensions: [rows, columns]
@@ -230,8 +236,7 @@ define(function(require, exports, module) {
 
     var gridModifier = new Modifier({
         size: function(){
-            var currentGridSize = gridSize.get();
-            return currentGridSize;
+            return gridSize.get();
         }, 
         origin: [.5, .5], 
         opacity: 0.5
@@ -328,23 +333,40 @@ define(function(require, exports, module) {
     function Patch(id) {
         this.surface = new Surface({
             size: [undefined, undefined],
+            classes: ['patch', id],
             properties: {
                 background: 'blue'
             }
         });
         this.id = id;
-        this.modifier;
-    };
-
-    Patch.prototype.addToGrid = function() {
-        canvas.add(this.modifier).add(this.surface);
+        this.valid = function(){
+            return this.minRow && this.maxRow && this.minColumn && this.maxColumn;
+        }
     }
 
-    Patch.prototype.setModifier = function(minMaxRow, minMaxColumn){
-        var minRow = minMaxRow[0];
-        var maxRow = minMaxRow[1];
-        var minColumn = minMaxColumn[0];
-        var maxColumn = minMaxColumn[1];
+    Patch.prototype.addToGrid = function() {
+        patches++;
+        canvas.add(this.modifier).add(this.surface);
+    };
+
+    Patch.prototype.addImage = function(imgSrc) {
+        var id = this.id;
+        $(".patch." + id).backstretch(imgSrc);
+    };
+
+    Patch.prototype.setDimensions = function(minMaxRow, minMaxColumn){
+        this.minRow = minMaxRow[0];
+        this.maxRow = minMaxRow[1];
+        this.minColumn = minMaxColumn[0];
+        this.maxColumn = minMaxColumn[1];
+
+    }
+
+    Patch.prototype.addModifier = function(){
+        var minRow = this.minRow;
+        var maxRow = this.maxRow;
+        var minColumn = this.minColumn;
+        var maxColumn = this.maxColumn;
         this.modifier = new Modifier({
             size: function(){
                 var currentGridSize = gridSize.get();
@@ -353,18 +375,17 @@ define(function(require, exports, module) {
     
                 var width = (maxColumn + 1 - minColumn) * cellWidth;
                 var height = (maxRow + 1 - minRow) * cellHeight;
-    
                 return [width, height];
             },
             align: function(){
-                console.log(minRow);
                 var rowAlign = (minRow - 1) / rows;
                 var columnAlign = (minColumn - 1) /columns;
     
                 return [columnAlign, rowAlign];
-            }
+            },
+            opacity: 2
         });
-    }
+    };
 
     function findMinMaxRow(){
         var cells = document.getElementsByClassName('cell');
@@ -373,11 +394,11 @@ define(function(require, exports, module) {
         for(var i = 0; i < cells.length; i++){
             var cell = cells[i];
             if (cell.style.opacity == 1){
-                cellClassName = cell.className;
+                var cellClassName = cell.className;
                 var id = parseInt(cellClassName.split(" ")[2]);
                 if(maxRow == null || id > maxRow){
                     maxRow = id;
-                } 
+                }
                 if (minRow == null || id < minRow){
                     minRow = id;
                 }
@@ -393,8 +414,9 @@ define(function(require, exports, module) {
         for(var i = 0; i < cells.length; i++){
             var cell = cells[i];
             if (cell.style.opacity == 1){
-                cellClassName = cell.className;
-                var id = parseInt(cellClassName.split(" ")[3]);
+                var cellClassName = cell.className;
+                var stringId = (cellClassName.split(" ")[3] != undefined) ? cellClassName.split(" ")[3] : cellClassName.split(" ")[2];
+                var id = parseInt(stringId);
                 if(maxColumn == null || id > maxColumn){
                     maxColumn = id;
                 } 
@@ -416,6 +438,4 @@ define(function(require, exports, module) {
     mainContext.add(selectBoxOpacity).add(selectBoxAnchor).add(selectBoxSize).add(selectBoxRotation).add(selectBox);
     var canvas = mainContext.add(gridModifier).add(initScaleModifier).add(scaleModifier).add(panModifier);
     canvas.add(grid);
-    
-    
 });
