@@ -169,7 +169,7 @@ define(function(require, exports, module) {
 
     selectMouseSync.on("update", function (data){
         size.set(data.position);
-        currentPatch.setDimensions(findMinMaxRow(), findMinMaxColumn());
+        //find overlap between cells and select box
         var cells = document.getElementsByClassName('cell');
         var selectBox = document.getElementsByClassName('selectBox')[0];
         var selectBoxRect = selectBox.getBoundingClientRect();
@@ -186,19 +186,25 @@ define(function(require, exports, module) {
                 cell.style.opacity = 0.5;
             }
         }
+        //find min and max row and column highlighted in grid
+        currentPatch.setDimensions(findMinMaxRow(), findMinMaxColumn());
     });
 
     
 
     selectMouseSync.on("end", function (){
+        //reset select box size and position
         anchor.set([0,0]);
         size.set([0,0]);
+        //reset opacity of cells
         var cells = document.getElementsByClassName('cell');
         for(var i = 0; i < cells.length; i++){
             var cell = cells[i];
             cell.style.opacity = 0.5;
         }
+        //check if patch is to be inserted
         if(currentPatch.valid()){
+            //set size and position of patch
             currentPatch.addModifier();
             currentPatch.addToGrid();
             currentPatch.addImage(images[patches]);
@@ -349,9 +355,26 @@ define(function(require, exports, module) {
         canvas.add(this.modifier).add(this.surface);
     };
 
+    function initMutationObserver() {
+        var MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
+        var famousContainer = document.querySelector('.famous-container');
+
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    currentPatch.addImage(images[patches]);
+                }
+            });
+        });
+
+        observer.observe(famousContainer, {
+            childList: true
+        });
+    }
+
     Patch.prototype.addImage = function(imgSrc) {
         var id = this.id;
-        $(".patch." + id).backstretch(imgSrc);
+        $('.patch.' + id).backstretch(imgSrc);
     };
 
     Patch.prototype.setDimensions = function(minMaxRow, minMaxColumn){
@@ -359,7 +382,6 @@ define(function(require, exports, module) {
         this.maxRow = minMaxRow[1];
         this.minColumn = minMaxColumn[0];
         this.maxColumn = minMaxColumn[1];
-
     }
 
     Patch.prototype.addModifier = function(){
@@ -438,4 +460,8 @@ define(function(require, exports, module) {
     mainContext.add(selectBoxOpacity).add(selectBoxAnchor).add(selectBoxSize).add(selectBoxRotation).add(selectBox);
     var canvas = mainContext.add(gridModifier).add(initScaleModifier).add(scaleModifier).add(panModifier);
     canvas.add(grid);
+
+    setTimeout(function(){
+        initMutationObserver();
+    }, 1000);
 });
