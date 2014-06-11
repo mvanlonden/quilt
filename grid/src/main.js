@@ -39,6 +39,7 @@ define(function(require, exports, module) {
     var Surface    = require("famous/core/Surface");
     var Modifier   = require("famous/core/Modifier");
     var Transform = require("famous/core/Transform");
+    var EventHandler = require("famous/core/EventHandler");
 
     var GridLayout = require("famous/views/GridLayout");
     var Transitionable = require("famous/transitions/Transitionable");
@@ -160,11 +161,11 @@ define(function(require, exports, module) {
     var selectMouseSync = new MouseSync();
 
     var patches = 0;
-    var currentPatch = new Patch(patches);
+    var currentPatch;
 
     selectMouseSync.on("start", function (data){
         anchor.set([data.clientX, data.clientY]);
-        currentPatch = new Patch(patches);
+        currentPatch = new Patch(patches, images[patches]);
     });
 
     selectMouseSync.on("update", function (data){
@@ -188,9 +189,14 @@ define(function(require, exports, module) {
         }
         //find min and max row and column highlighted in grid
         currentPatch.setDimensions(findMinMaxRow(), findMinMaxColumn());
+        //check if patch is to be inserted
+        if(currentPatch.valid()){
+            //set size and position of patch
+            currentPatch.addModifier();
+            currentPatch.addToGrid();
+            currentPatch.addImage();
+        }
     });
-
-    
 
     selectMouseSync.on("end", function (){
         //reset select box size and position
@@ -202,13 +208,7 @@ define(function(require, exports, module) {
             var cell = cells[i];
             cell.style.opacity = 0.5;
         }
-        //check if patch is to be inserted
-        if(currentPatch.valid()){
-            //set size and position of patch
-            currentPatch.addModifier();
-            currentPatch.addToGrid();
-            currentPatch.addImage(images[patches]);
-        }
+        patches++;
     });
 
     var mainContext = Engine.createContext();
@@ -336,8 +336,25 @@ define(function(require, exports, module) {
     *
     **/
 
-    function Patch(id) {
-        this.surface = new Surface({
+    function PatchSurface(options) {
+        Surface.apply(this, arguments);
+        this._superDeploy = Surface.prototype.deploy
+    }
+
+    PatchSurface.prototype = Object.create(Surface.prototype);
+    PatchSurface.prototype.constructor = PatchSurface;
+
+    PatchSurface.prototype.elementType = 'div';
+    PatchSurface.prototype.elementClass = 'famous-surface';
+
+
+    PatchSurface.prototype.deploy = function deploy(target) {
+        this._superDeploy(target);
+        this.eventHandler.trigger('surface-has-rendered', this);
+    };
+
+    function Patch(id, imageSrc) {
+        this.surface = new PatchSurface({
             size: [undefined, undefined],
             classes: ['patch', id],
             properties: {
@@ -348,33 +365,22 @@ define(function(require, exports, module) {
         this.valid = function(){
             return this.minRow && this.maxRow && this.minColumn && this.maxColumn;
         }
+        this.image = imageSrc;
+        this.surface.pipe(patchAdditionEvent);
     }
 
+    var patchAdditionEvent = new EventHandler();
+
+    patchAdditionEvent.on('surface-has-rendered', function(data){
+        currentPatch.addImage();
+    });
+
     Patch.prototype.addToGrid = function() {
-        patches++;
         canvas.add(this.modifier).add(this.surface);
     };
 
-    function initMutationObserver() {
-        var MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
-        var famousContainer = document.querySelector('.famous-container');
-
-        var observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'childList') {
-                    currentPatch.addImage(images[patches]);
-                }
-            });
-        });
-
-        observer.observe(famousContainer, {
-            childList: true
-        });
-    }
-
-    Patch.prototype.addImage = function(imgSrc) {
-        var id = this.id;
-        $('.patch.' + id).backstretch(imgSrc);
+    Patch.prototype.addImage = function() {
+        $('.patch.' + this.id).backstretch(this.image);
     };
 
     Patch.prototype.setDimensions = function(minMaxRow, minMaxColumn){
@@ -460,8 +466,4 @@ define(function(require, exports, module) {
     mainContext.add(selectBoxOpacity).add(selectBoxAnchor).add(selectBoxSize).add(selectBoxRotation).add(selectBox);
     var canvas = mainContext.add(gridModifier).add(initScaleModifier).add(scaleModifier).add(panModifier);
     canvas.add(grid);
-
-    setTimeout(function(){
-        initMutationObserver();
-    }, 1000);
 });
