@@ -336,25 +336,8 @@ define(function(require, exports, module) {
     *
     **/
 
-    function PatchSurface(options) {
-        Surface.apply(this, arguments);
-        this._superDeploy = Surface.prototype.deploy
-    }
-
-    PatchSurface.prototype = Object.create(Surface.prototype);
-    PatchSurface.prototype.constructor = PatchSurface;
-
-    PatchSurface.prototype.elementType = 'div';
-    PatchSurface.prototype.elementClass = 'famous-surface';
-
-
-    PatchSurface.prototype.deploy = function deploy(target) {
-        this._superDeploy(target);
-        this.eventHandler.trigger('surface-has-rendered', this);
-    };
-
     function Patch(id, imageSrc) {
-        this.surface = new PatchSurface({
+        this.surface = new Surface({
             size: [undefined, undefined],
             classes: ['patch', id],
             properties: {
@@ -371,7 +354,7 @@ define(function(require, exports, module) {
 
     var patchAdditionEvent = new EventHandler();
 
-    patchAdditionEvent.on('surface-has-rendered', function(data){
+    patchAdditionEvent.on('deploy', function(){
         currentPatch.addImage();
     });
 
